@@ -9,5 +9,7 @@
             <enum name="anchored" value="6" />
         </attr>
         <attr name="behavior_skipAnchored" format="boolean" />
+        <attr name="behavior_shouldAnchoredBeforeExpand" format="boolean" />
+        <attr name="behavior_shouldAnchoredBeforeCollapse" format="boolean" />
     </declare-styleable>
 </resources>
