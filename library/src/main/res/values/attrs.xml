@@ -11,5 +11,6 @@
         <attr name="behavior_skipAnchored" format="boolean" />
         <attr name="behavior_shouldAnchoredBeforeExpand" format="boolean" />
         <attr name="behavior_shouldAnchoredBeforeCollapse" format="boolean" />
+        <attr name="behavior_expandable" format="boolean" />
     </declare-styleable>
 </resources>

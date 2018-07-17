@@ -211,6 +211,8 @@ public class AnchorBottomSheetBehavior<V extends View> extends CoordinatorLayout
     private boolean mShouldAnchoredBeforeExpand = false;
     private boolean mShouldAnchoredBeforeCollapse = false;
 
+    private boolean mExpandable = true;
+
     /**
      * Default constructor for instantiating AnchorBottomSheetBehaviors.
      */
@@ -247,6 +249,7 @@ public class AnchorBottomSheetBehavior<V extends View> extends CoordinatorLayout
 
         mShouldAnchoredBeforeExpand = a.getBoolean(R.styleable.AnchorBottomSheetBehavior_Layout_behavior_shouldAnchoredBeforeExpand, false);
         mShouldAnchoredBeforeCollapse = a.getBoolean(R.styleable.AnchorBottomSheetBehavior_Layout_behavior_shouldAnchoredBeforeCollapse, false);
+        mExpandable = a.getBoolean(R.styleable.AnchorBottomSheetBehavior_Layout_behavior_expandable, true);
         a.recycle();
 
         ViewConfiguration configuration = ViewConfiguration.get(context);
@@ -301,7 +304,7 @@ public class AnchorBottomSheetBehavior<V extends View> extends CoordinatorLayout
             mMinOffset = mAnchorOffset;
         }
         mMaxOffset = Math.max(mParentHeight - peekHeight, mMinOffset);
-        if (mState == STATE_EXPANDED) {
+        if (shouldExpandFullPanel() && mState == STATE_EXPANDED) {
             ViewCompat.offsetTopAndBottom(child, mMinOffset);
         } else if (mHideable && mState == STATE_HIDDEN) {
             ViewCompat.offsetTopAndBottom(child, mParentHeight);
@@ -322,6 +325,9 @@ public class AnchorBottomSheetBehavior<V extends View> extends CoordinatorLayout
         }
         mViewRef = new WeakReference<>(child);
         mNestedScrollingChildRef = new WeakReference<>(findScrollingChild(child));
+        if (!shouldExpandFullPanel()) {
+            mNestedScrollingChildRef.get().setPadding(0, 0, 0, mAnchorOffset);
+        }
         return true;
     }
 
@@ -429,10 +435,11 @@ public class AnchorBottomSheetBehavior<V extends View> extends CoordinatorLayout
         int currentTop = child.getTop();
         int newTop = currentTop - dy;
         if (dy > 0) { // Upward
-            if (newTop < mMinOffset) {
-                consumed[1] = currentTop - mMinOffset;
+            int topOffset = shouldExpandFullPanel() ? mMinOffset : mAnchorOffset;
+            if (newTop < topOffset) {
+                consumed[1] = currentTop - topOffset;
                 ViewCompat.offsetTopAndBottom(child, -consumed[1]);
-                setStateInternal(STATE_EXPANDED);
+                setStateInternal(shouldExpandFullPanel() ? STATE_EXPANDED : STATE_ANCHORED);
             } else {
                 consumed[1] = dy;
                 ViewCompat.offsetTopAndBottom(child, -dy);
@@ -460,10 +467,17 @@ public class AnchorBottomSheetBehavior<V extends View> extends CoordinatorLayout
         if (!mAllowUserDragging) {
             return;
         }
-        if (child.getTop() == mMinOffset) {
+
+        if (shouldExpandFullPanel() && child.getTop() == mMinOffset) {
             setStateInternal(STATE_EXPANDED);
             return;
         }
+
+        if (!shouldExpandFullPanel() && child.getTop() == mAnchorOffset) {
+            setStateInternal(STATE_ANCHORED);
+            return;
+        }
+
         if (target != mNestedScrollingChildRef.get() || !mNestedScrolled) {
             return;
         }
@@ -493,9 +507,26 @@ public class AnchorBottomSheetBehavior<V extends View> extends CoordinatorLayout
             return false;
         }
         return target == mNestedScrollingChildRef.get() &&
-                (mState != STATE_EXPANDED ||
+                (!isExpanded() ||
                         super.onNestedPreFling(coordinatorLayout, child, target,
                                 velocityX, velocityY));
+    }
+
+    private boolean isExpanded() {
+        if (shouldExpandFullPanel()) {
+            return mState == STATE_EXPANDED;
+        }
+
+        return mState == STATE_ANCHORED;
+    }
+
+    private boolean shouldExpandFullPanel() {
+        if (!mExpandable && mAnchorOffset > 0) {
+            // Support partial expand
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -797,6 +828,11 @@ public class AnchorBottomSheetBehavior<V extends View> extends CoordinatorLayout
         if (mSkipAnchored || mMinOffset >= mAnchorOffset) {
             return true;
         }
+
+        if (!shouldExpandFullPanel()) {
+            return false;
+        }
+
         int currentTop = child.getTop();
         if (currentTop < mAnchorOffset) {
             return true;
@@ -850,7 +886,7 @@ public class AnchorBottomSheetBehavior<V extends View> extends CoordinatorLayout
         int top;
         if (state == STATE_COLLAPSED) {
             top = mMaxOffset;
-        } else if (state == STATE_EXPANDED) {
+        } else if (shouldExpandFullPanel() && state == STATE_EXPANDED) {
             top = mMinOffset;
         } else if (state == STATE_ANCHORED) {
             if (mAnchorOffset > mMinOffset) {
@@ -920,7 +956,7 @@ public class AnchorBottomSheetBehavior<V extends View> extends CoordinatorLayout
 
         @Override
         public int clampViewPositionVertical(View child, int top, int dy) {
-            return constrain(top, mMinOffset, mHideable ? mParentHeight : mMaxOffset);
+            return constrain(top, shouldExpandFullPanel() ? mMinOffset : mAnchorOffset, mHideable ? mParentHeight : mMaxOffset);
         }
 
         private int constrain(int amount, int low, int high) {
