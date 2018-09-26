@@ -58,8 +58,6 @@
         app:behavior_expandable="false"
         app:behavior_peekHeight="@dimen/peek_height"
         app:behavior_defaultState="collapsed"
-        app:behavior_shouldAnchoredBeforeExpand="false"
-        app:behavior_shouldAnchoredBeforeCollapse="false"
         app:layout_behavior="com.trafi.anchorbottomsheetbehavior.AnchorBottomSheetBehavior">
 
         <TextView
